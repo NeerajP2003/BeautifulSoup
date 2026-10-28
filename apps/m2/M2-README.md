@@ -27,17 +27,21 @@ argument. The three programs use these filters:
 
 | API used | Used in | Definition in Beautiful Soup source |
 |---|---|---|
-| `BeautifulSoup(...)` constructor | tasks 2, 3, 4, 6, 7 | [`bs4/__init__.py`, line 209](../../bs4/__init__.py#L209) |
+| `BeautifulSoup(...)` constructor | tasks 1-8 | [`bs4/__init__.py`, line 209](../../bs4/__init__.py#L209) |
+| `Tag.find(...)` | task 1 | [`bs4/element.py`, line 2684](../../bs4/element.py#L2684) |
+| `PageElement.find_parent(...)` | task 1 | [`bs4/element.py`, line 992](../../bs4/element.py#L992) |
+| `PageElement.get_text(...)` | tasks 1, 8 | [`bs4/element.py`, line 524](../../bs4/element.py#L524) |
 | `Tag.find_all(...)` | tasks 2, 3, 4, 6, 7 | [`bs4/element.py`, line 2715](../../bs4/element.py#L2715) |
 | `Tag.name` setter | task 6 (`tag.name = "blockquote"`) | [`bs4/element.py`, line 1354](../../bs4/element.py#L1354) |
 | `Tag.__setitem__(...)` | task 7 (`tag["class"] = "test"`) | [`bs4/element.py`, line 2223](../../bs4/element.py#L2223) |
-| `Tag.prettify(...)` | tasks 6, 7 | [`bs4/element.py`, line 2601](../../bs4/element.py#L2601) |
+| `Tag.prettify(...)` | tasks 5, 6, 7 | [`bs4/element.py`, line 2601](../../bs4/element.py#L2601) |
 
-The Milestone 1 programs provided for tasks 2, 3, and 4 use `find_all(True)`
-to select all tags, `find_all(id=True)` to select tags with an `id`
-attribute, and `find_all("a")` to select anchor tags, respectively. Tasks 6
-and 7 additionally rename a tag and set its `class` attribute before calling
-`prettify()`.
+Task 1 uses `find(...)`, `find_parent(...)`, and `get_text(...)` to locate and
+print a card. Tasks 2, 3, and 4 use `find_all(True)`, `find_all(id=True)`,
+and `find_all("a")`, respectively. Task 5 formats the whole document with
+`prettify()`. Tasks 6 and 7 rename a tag and set its `class` attribute
+before calling `prettify()`. Task 8 extracts document text with
+`get_text(...)`.
 
 The assignment text says "two application programs" but names three tasks;
 this submission has a separate program for each task.
