@@ -16,12 +16,10 @@ from . import HTMLTreeBuilderSmokeTest
 class TestHTMLParserTreeBuilder(HTMLTreeBuilderSmokeTest):
     default_builder = HTMLParserTreeBuilder
 
-    def test_rejected_input(self):
-        # Python's html.parser will occasionally reject markup,
-        # especially when there is a problem with the initial DOCTYPE
-        # declaration. Different versions of Python sound the alarm in
-        # different ways, but Beautiful Soup consistently raises
-        # errors as ParserRejectedMarkup exceptions.
+    def test_malformed_input_is_rejected_or_tolerated(self):
+        # HTMLParser's behavior for these inputs varies across Python
+        # versions. If it rejects an input, the builder should report the
+        # rejection using Beautiful Soup's ParserRejectedMarkup exception.
         bad_markup = [
             # https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=28873
             # https://github.com/guidovranken/python-library-fuzzers/blob/master/corp-html/519e5b4269a01185a0d5e76295251921da2f0700
@@ -34,8 +32,19 @@ class TestHTMLParserTreeBuilder(HTMLTreeBuilderSmokeTest):
             b"<![UNKNOWN[]]>",
         ]
         for markup in bad_markup:
-            with pytest.raises(ParserRejectedMarkup):
-                self.soup(markup)
+            try:
+                soup = self.soup(markup)
+            except ParserRejectedMarkup:
+                continue
+            assert soup is not None
+
+    def test_assertion_error_is_wrapped_as_parser_rejection(self, monkeypatch):
+        def raise_assertion(self, markup):
+            raise AssertionError("simulated fatal parser error")
+
+        monkeypatch.setattr(BeautifulSoupHTMLParser, "feed", raise_assertion)
+        with pytest.raises(ParserRejectedMarkup, match="simulated fatal parser error"):
+            self.soup("<p>Some markup</p>")
 
     def test_namespaced_system_doctype(self):
         # html.parser can't handle namespaced doctypes, so skip this one.
