@@ -128,6 +128,7 @@ from bs4._warnings import (
     UnusualUsageWarning,
     XMLParsedAsHTMLWarning,
 )
+from bs4.SoupReplacer import SoupReplacer
 
 
 class BeautifulSoup(Tag):
@@ -215,6 +216,7 @@ class BeautifulSoup(Tag):
         from_encoding: Optional[_Encoding] = None,
         exclude_encodings: Optional[_Encodings] = None,
         element_classes: Optional[Dict[Type[PageElement], Type[PageElement]]] = None,
+        replacer: Optional[SoupReplacer] = None,
         **kwargs: Any,
     ):
         """Constructor.
@@ -239,6 +241,9 @@ class BeautifulSoup(Tag):
          matching the SoupStrainer will be considered. This is useful
          when parsing part of a document that would otherwise be too
          large to fit into memory.
+
+        :param replacer: A SoupReplacer. Tags with the configured name
+         will be renamed as the document is parsed.
 
         :param from_encoding: A string indicating the encoding of the
          document to be parsed. Pass this in if Beautiful Soup is
@@ -342,6 +347,7 @@ class BeautifulSoup(Tag):
             from_encoding = None
 
         self.element_classes = element_classes or dict()
+        self.replacer = replacer
 
         # We need this information to track whether or not the builder
         # was specified well enough that we can omit the 'you need to
@@ -1018,6 +1024,9 @@ class BeautifulSoup(Tag):
         # print("Start tag %s: %s" % (name, attrs))
         self.endData()
 
+        if self.replacer is not None and name == self.replacer.old_tag:
+            name = self.replacer.new_tag
+
         if (
             self.parse_only
             and len(self.tagStack) <= 1
@@ -1060,6 +1069,8 @@ class BeautifulSoup(Tag):
         """
         # print("End tag: " + name)
         self.endData()
+        if self.replacer is not None and name == self.replacer.old_tag:
+            name = self.replacer.new_tag
         self._popToTag(name, nsprefix)
 
     def handle_data(self, data: str) -> None:
