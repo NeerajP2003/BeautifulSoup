@@ -102,6 +102,7 @@ from typing import (
     Sequence,
     Optional,
     Type,
+    Tuple,
     Union,
 )
 
@@ -679,6 +680,7 @@ class BeautifulSoup(Tag):
         self.current_data = []
         self.currentTag = None
         self.tagStack = []
+        self._source_tag_names: Dict[int, Tuple[str, Optional[str]]] = {}
         self.open_tag_counter = Counter()
         self.preserve_whitespace_tag_stack = []
         self.string_container_stack = []
@@ -798,6 +800,7 @@ class BeautifulSoup(Tag):
             # Nothing to pop. This shouldn't happen.
             return None
         tag = self.tagStack.pop()
+        self._source_tag_names.pop(id(tag), None)
         if tag.name in self.open_tag_counter:
             self.open_tag_counter[tag.name] -= 1
         if (
@@ -1024,13 +1027,23 @@ class BeautifulSoup(Tag):
         # print("Start tag %s: %s" % (name, attrs))
         self.endData()
 
-        if self.replacer is not None and name == self.replacer.old_tag:
-            name = self.replacer.new_tag
+        tag_name = name
+        has_callback_transformers = False
+        if self.replacer is not None:
+            tag_name = self.replacer.replacement_name(name)
+            has_callback_transformers = any(
+                (
+                    self.replacer.name_xformer,
+                    self.replacer.attrs_xformer,
+                    self.replacer.xformer,
+                )
+            )
 
         if (
-            self.parse_only
+            not has_callback_transformers
+            and self.parse_only
             and len(self.tagStack) <= 1
-            and not self.parse_only.allow_tag_creation(nsprefix, name, attrs)
+            and not self.parse_only.allow_tag_creation(nsprefix, tag_name, attrs)
         ):
             return None
 
@@ -1041,7 +1054,7 @@ class BeautifulSoup(Tag):
         tag = tag_class(
             self,
             self.builder,
-            name,
+            tag_name,
             namespace,
             nsprefix,
             attrs,
@@ -1053,9 +1066,22 @@ class BeautifulSoup(Tag):
         )
         if tag is None:
             return tag
+        if self.replacer is not None:
+            self.replacer.transform_tag(tag)
+
+        if (
+            self.replacer is not None
+            and self.parse_only
+            and len(self.tagStack) <= 1
+            and not self.parse_only.allow_tag_creation(nsprefix, tag.name, tag.attrs)
+        ):
+            return None
+
         if self._most_recent_element is not None:
             self._most_recent_element.next_element = tag
         self._most_recent_element = tag
+        if self.replacer is not None:
+            self._source_tag_names[id(tag)] = (name, nsprefix)
         self.pushTag(tag)
         return tag
 
@@ -1069,9 +1095,19 @@ class BeautifulSoup(Tag):
         """
         # print("End tag: " + name)
         self.endData()
-        if self.replacer is not None and name == self.replacer.old_tag:
-            name = self.replacer.new_tag
-        self._popToTag(name, nsprefix)
+        if self.replacer is None:
+            self._popToTag(name, nsprefix)
+            return
+
+        for tag in reversed(self.tagStack[1:]):
+            source_name, source_prefix = self._source_tag_names.get(
+                id(tag), (tag.name, tag.prefix)
+            )
+            if source_name == name and source_prefix == nsprefix:
+                while self.tagStack and self.tagStack[-1] is not tag:
+                    self.popTag()
+                self.popTag()
+                break
 
     def handle_data(self, data: str) -> None:
         """Called by the tree builder when a chunk of textual data is
