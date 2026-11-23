@@ -600,3 +600,71 @@ class TestEncodingConversion(SoupTest):
         # The internal data structures can be encoded as UTF-8.
         soup_from_unicode = self.soup(self.unicode_data)
         assert soup_from_unicode.encode("utf-8") == self.utf8_data
+
+class TestSoupIteration:
+
+    def test_empty_soup(self):
+        soup = BeautifulSoup("", "html.parser")
+
+        assert list(soup) == []
+
+    def test_single_tag(self):
+        soup = BeautifulSoup("<p></p>", "html.parser")
+
+        nodes = list(soup)
+
+        assert len(nodes) == 1
+        assert isinstance(nodes[0], Tag)
+        assert nodes[0].name == "p"
+
+    def test_nested_tags(self):
+        soup = BeautifulSoup(
+            "<div><section><p>Text</p></section></div>",
+            "html.parser"
+        )
+
+        nodes = list(soup)
+
+        assert [node.name if isinstance(node, Tag) else str(node)
+                for node in nodes] == ["div", "section", "p", "Text"]
+
+    def test_text_nodes(self):
+        soup = BeautifulSoup(
+            "<p>Hello <b>there</b>!</p>",
+            "html.parser"
+        )
+
+        text_nodes = [
+            node for node in soup
+            if isinstance(node, NavigableString)
+        ]
+
+        assert [str(node) for node in text_nodes] == [
+            "Hello ", "there", "!"
+        ]
+
+    def test_comments_and_sibling_tags(self):
+        soup = BeautifulSoup(
+            "<div><!--note--><span>one</span><span>two</span></div>",
+            "html.parser"
+        )
+
+        nodes = list(soup)
+
+        assert isinstance(nodes[1], Comment)
+        assert str(nodes[1]) == "note"
+
+        assert nodes[2].name == "span"
+        assert nodes[4].name == "span"
+
+        assert [str(node) for node in nodes] == [
+            "<div><!--note--><span>one</span><span>two</span></div>",
+            "note",
+            "<span>one</span>",
+            "one",
+            "<span>two</span>",
+            "two"
+        ]
+        assert [node.name for node in nodes if isinstance(node, Tag)] == [
+    "div", "span", "span"
+]

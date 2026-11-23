@@ -1188,6 +1188,9 @@ class BeautifulSoup(Tag):
         return prefix + super(BeautifulSoup, self).decode(
             indent_level, eventual_encoding, formatter, iterator
         )
+    def __iter__(self) -> Iterator[PageElement]:
+        """Iterate over all nodes in the document tree."""
+        return self.descendants
 
 
 # Aliases to make it easier to get started quickly, e.g. 'from bs4 import _soup'
